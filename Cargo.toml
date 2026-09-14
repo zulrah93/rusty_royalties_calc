@@ -7,4 +7,5 @@ edition = "2024"
 opt-level = 3
 
 [dependencies]
+tokio = { version = "1.53.1" , features = ["full"] }
 

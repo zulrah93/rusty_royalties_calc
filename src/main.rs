@@ -2,7 +2,6 @@ use std::fs::read_to_string;
 use std::process::exit;
 use std::env;
 use std::collections::HashMap;
-//use std::cell::RefCell;
 use std::fmt::{Display, Formatter};
 
 #[derive(Copy, Clone)]
@@ -99,16 +98,49 @@ fn process_royalty(current_line : &str, results : &mut HashMap<String, Sale>) {
     }
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
 
     let command_line_arguments: Vec<String> = env::args().collect();
-    let mut rows_processed = 0;
+    let mut rows_processed : usize  = 0;
     if command_line_arguments.len() > 1 {
 
+        let mut use_async : bool = false;
         let csv_file_path = &command_line_arguments[1];
+        if command_line_arguments.len() > 2 {
+            use_async = (command_line_arguments[2] == "async");
+        }
         let mut results : HashMap<String, Sale> = HashMap::new();
-
         if let Ok(entire_file_in_memory) = read_to_string(csv_file_path) {
+
+            if use_async {
+
+                println!("Using async approach!");
+
+                let mut futures = Vec::new();
+
+                for current_line in entire_file_in_memory.lines() {
+                    if rows_processed > 1 {
+                       futures.push(process_royalty_async(current_line));
+                    }
+                    rows_processed += 1;
+                }
+
+                for future in futures {
+                   let new_sale = future.await;
+                   let sale = results.entry(new_sale.0).or_insert(Sale::new(0u64, 0f64));
+                    sale.amount_usd += new_sale.1.amount_usd;
+                    sale.streams_played += new_sale.1.streams_played;
+                }
+
+                for key_value in results {
+                    println!("=======================================================\nSong Title: {}", key_value.0);
+                    println!("{}", key_value.1);
+                }
+
+                println!("Processed {} rows...", rows_processed);
+                exit(0);
+            }
 
             for current_line in entire_file_in_memory.lines() {
                 if rows_processed > 1 {
