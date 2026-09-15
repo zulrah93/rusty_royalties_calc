@@ -36,29 +36,29 @@ async fn process_royalty_async(current_line : &str) -> (String, Sale) {
     let filtered_current_line : String = current_line.chars().filter(|&c| c != '"').collect();
 
     for column in filtered_current_line.as_str().split(',') {
-
-        if column_index == 5 {
-            song_title = column;
-        }
-
-        if column_index == 8 {
-
-            if let Ok(streams_played) = column.parse::<u64>() {
-                current_sale.streams_played += streams_played;
+        match column_index {
+            5 => {
+                song_title = column;
+                column_index += 1;
+            },
+            8 => {
+                if let Ok(streams_played) = column.parse::<u64>() {
+                    current_sale.streams_played += streams_played;
+                    column_index += 1;
+                }
+                else {
+                    println!("Encountered an non integer in quanity column...");
+                    exit(0);
+                }
+            },
+            13 => {
+                if let Ok(amount_usd) = column.parse::<f64>() {
+                    current_sale.amount_usd += amount_usd;
+                }
+                column_index += 1;
             }
-            else {
-                println!("Encountered an non integer in quanity column...");
-                exit(0);
-            }
+            _ => column_index += 1,
         }
-
-        if column_index == 13 {
-            if let Ok(amount_usd) = column.parse::<f64>() {
-                current_sale.amount_usd += amount_usd;
-            }
-        }
-
-        column_index += 1;
     }
 
     (song_title.to_string(), *current_sale)
@@ -72,30 +72,30 @@ fn process_royalty(current_line : &str, results : &mut HashMap<String, Sale>) {
     let filtered_current_line : String = current_line.chars().filter(|&c| c != '"').collect();
 
     for column in filtered_current_line.as_str().split(',') {
-
-        if column_index == 5 {
-            let song_title = column.to_owned();
-            current_sale  = results.entry(song_title).or_insert(Sale::new(0u64, 0.0f64));
-        }
-
-        if column_index == 8 {
-
-            if let Ok(streams_played) = column.parse::<u64>() {
-                   current_sale.streams_played += streams_played;
+        match column_index {
+            5 => {
+                let song_title = column.to_owned();
+                current_sale  = results.entry(song_title).or_insert(Sale::new(0u64, 0.0f64));
+                column_index += 1;
+            },
+            8 => {
+                if let Ok(streams_played) = column.parse::<u64>() {
+                    current_sale.streams_played += streams_played;
+                    column_index += 1;
+                }
+                else {
+                    println!("Encountered an non integer in quanity column...");
+                    exit(0);
+                }
+            },
+            13 => {
+                if let Ok(amount_usd) = column.parse::<f64>() {
+                    current_sale.amount_usd += amount_usd;
+                }
+                column_index += 1;
             }
-            else {
-                println!("Encountered an non integer in quanity column...");
-                exit(0);
-            }
+            _ => column_index+= 1,
         }
-
-        if column_index == 13 {
-            if let Ok(amount_usd) = column.parse::<f64>() {
-                current_sale.amount_usd += amount_usd;
-            }
-        }
-
-        column_index += 1;
     }
 }
 
@@ -151,8 +151,8 @@ async fn main() {
             }
 
             for key_value in results {
-                    println!("=======================================================\nSong Title: {}", key_value.0);
-                    println!("{}", key_value.1);
+                    println!("=======================================================\nSong Title: {}\n{}",
+                             key_value.0,  key_value.1);
             }
 
             println!("Processed {} rows...", rows_processed);
