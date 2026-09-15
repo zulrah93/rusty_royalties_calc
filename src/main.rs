@@ -68,18 +68,19 @@ fn process_royalty(current_line : &str, results : &mut HashMap<String, Sale>) {
 
     let mut column_index : usize = 0;
     let mut current_sale  = &mut Sale::new(0u64, 0.0f64);
-    for column in current_line.split(',') {
 
-        let true_column : String = column.chars().filter(|&c| c != '"').collect();
+    let filtered_current_line : String = current_line.chars().filter(|&c| c != '"').collect();
+
+    for column in filtered_current_line.as_str().split(',') {
 
         if column_index == 5 {
-            let song_title = true_column.to_owned();
+            let song_title = column.to_owned();
             current_sale  = results.entry(song_title).or_insert(Sale::new(0u64, 0.0f64));
         }
 
         if column_index == 8 {
 
-            if let Ok(streams_played) = true_column.parse::<u64>() {
+            if let Ok(streams_played) = column.parse::<u64>() {
                    current_sale.streams_played += streams_played;
             }
             else {
@@ -89,7 +90,7 @@ fn process_royalty(current_line : &str, results : &mut HashMap<String, Sale>) {
         }
 
         if column_index == 13 {
-            if let Ok(amount_usd) = true_column.parse::<f64>() {
+            if let Ok(amount_usd) = column.parse::<f64>() {
                 current_sale.amount_usd += amount_usd;
             }
         }
@@ -108,7 +109,7 @@ async fn main() {
         let mut use_async : bool = false;
         let csv_file_path = &command_line_arguments[1];
         if command_line_arguments.len() > 2 {
-            use_async = (command_line_arguments[2] == "async");
+            use_async = command_line_arguments[2] == "async";
         }
         let mut results : HashMap<String, Sale> = HashMap::new();
         if let Ok(entire_file_in_memory) = read_to_string(csv_file_path) {
