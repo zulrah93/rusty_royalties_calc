@@ -30,20 +30,20 @@ impl Sale {
 async fn process_royalty_async(current_line : &str) -> (String, Sale) {
 
     let mut column_index : usize = 0;
-    let mut current_sale  = &mut Sale::new(0u64, 0.0f64);
-    let mut song_title = String::new();
+    let current_sale  = &mut Sale::new(0u64, 0.0f64);
+    let mut song_title = "";
 
-    for column in current_line.split(',') {
+    let filtered_current_line : String = current_line.chars().filter(|&c| c != '"').collect();
 
-        let true_column : String = column.chars().filter(|&c| c != '"').collect();
+    for column in filtered_current_line.as_str().split(',') {
 
         if column_index == 5 {
-            song_title = true_column.to_owned();
+            song_title = column;
         }
 
         if column_index == 8 {
 
-            if let Ok(streams_played) = true_column.parse::<u64>() {
+            if let Ok(streams_played) = column.parse::<u64>() {
                 current_sale.streams_played += streams_played;
             }
             else {
@@ -53,7 +53,7 @@ async fn process_royalty_async(current_line : &str) -> (String, Sale) {
         }
 
         if column_index == 13 {
-            if let Ok(amount_usd) = true_column.parse::<f64>() {
+            if let Ok(amount_usd) = column.parse::<f64>() {
                 current_sale.amount_usd += amount_usd;
             }
         }
@@ -61,7 +61,7 @@ async fn process_royalty_async(current_line : &str) -> (String, Sale) {
         column_index += 1;
     }
 
-    (song_title, *current_sale)
+    (song_title.to_string(), *current_sale)
 }
 
 fn process_royalty(current_line : &str, results : &mut HashMap<String, Sale>) {
