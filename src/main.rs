@@ -3,6 +3,7 @@ use std::process::exit;
 use std::env;
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
+use rayon::prelude::*;
 
 #[derive(Copy, Clone)]
 struct Sale {
@@ -27,7 +28,7 @@ impl Sale {
     }
 
 }
-async fn process_royalty_async(current_line : &str) -> (String, Sale) {
+ fn process_royalty_parallel(current_line : &str) -> (String, Sale) {
 
     let mut column_index : usize = 0;
     let current_sale  = &mut Sale::new(0u64, 0.0f64);
@@ -47,13 +48,15 @@ async fn process_royalty_async(current_line : &str) -> (String, Sale) {
                     column_index += 1;
                 }
                 else {
-                    println!("Encountered an non integer in quanity column...");
-                    exit(0);
+                    ()
                 }
             },
             13 => {
                 if let Ok(amount_usd) = column.parse::<f64>() {
                     current_sale.amount_usd += amount_usd;
+                }
+                else {
+                    ()
                 }
                 column_index += 1;
             }
@@ -99,37 +102,33 @@ fn process_royalty(current_line : &str, results : &mut HashMap<String, Sale>) {
     }
 }
 
-#[tokio::main]
-async fn main() {
+
+ fn main() {
 
     let command_line_arguments: Vec<String> = env::args().collect();
-    let mut rows_processed : usize  = 0;
+
     if command_line_arguments.len() > 1 {
 
+        let mut rows_processed : usize = 0;
         let mut use_async : bool = false;
         let csv_file_path = &command_line_arguments[1];
         if command_line_arguments.len() > 2 {
             use_async = command_line_arguments[2] == "async";
         }
-        let mut results : HashMap<String, Sale> = HashMap::new();
+
         if let Ok(entire_file_in_memory) = read_to_string(csv_file_path) {
 
-            if use_async {
+            let mut results = HashMap::new();
 
+            if use_async {
                 println!("Using async approach!");
 
-                let mut futures = Vec::new();
+                let sales : Vec<(String, Sale)> = entire_file_in_memory.par_lines().map(|current_line| {
+                    process_royalty_parallel(current_line)
+                }).collect();
 
-                for current_line in entire_file_in_memory.lines() {
-                    if rows_processed > 1 {
-                       futures.push(process_royalty_async(current_line));
-                    }
-                    rows_processed += 1;
-                }
-
-                for future in futures {
-                   let new_sale = future.await;
-                   let sale = results.entry(new_sale.0).or_insert(Sale::new(0u64, 0f64));
+                for new_sale in sales {
+                    let sale = results.entry(new_sale.0).or_insert(Sale::new(0u64, 0f64));
                     sale.amount_usd += new_sale.1.amount_usd;
                     sale.streams_played += new_sale.1.streams_played;
                 }
