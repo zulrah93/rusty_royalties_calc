@@ -127,6 +127,8 @@ fn process_royalty(current_line : &str, results : &mut HashMap<String, Sale>) {
                     process_royalty_parallel(current_line)
                 }).collect();
 
+                let rows_processed = &sales.len();
+
                 for new_sale in sales {
                     let sale = results.entry(new_sale.0).or_insert(Sale::new(0u64, 0f64));
                     sale.amount_usd += new_sale.1.amount_usd;
